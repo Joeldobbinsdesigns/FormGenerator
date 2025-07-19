@@ -8,6 +8,7 @@ export default function Form() {
   const [formFields, setFormFields] = useState<FormFields>({});
   const [showJsonRequest, setShowJsonRequest] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   interface HandleChange {
@@ -31,6 +32,7 @@ export default function Form() {
     requiresPhoto?: number;
     commentField?: number;
     commentFieldName?: string;
+    inputReq?: number;
   }
 
   interface FormFields {
@@ -43,6 +45,24 @@ export default function Form() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
+
+    const missingFields: string[] = [];
+
+    formSpec.forEach((field) => {
+      if (field.inputReq === 1 && !formFields[field.fieldName]) {
+        missingFields.push(field.title);
+      }
+    });
+
+    if (missingFields.length > 0) {
+      setError(
+        `Please fill in the required field(s): ${missingFields.join(", ")}`
+      );
+      setShowJsonRequest(false);
+      return;
+    }
+
     console.log(formFields);
     setShowJsonRequest(true);
   };
@@ -92,6 +112,9 @@ export default function Form() {
                 <div key={field.fieldid} className="mb-4">
                   <label className="block font-large mb-1 text-white">
                     {field.title}
+                    {field.inputReq === 1 && (
+                      <span className="text-red-400 ml-1">*</span>
+                    )}
                   </label>
                   {field.helpText && (
                     <p className="text-xs text-gray-300 mb-1">
@@ -249,7 +272,10 @@ export default function Form() {
               ))}
           </div>
         ))}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center justify-center">
+          {error && (
+            <p className="text-red-500 text-sm text-center mb-2">{error}</p>
+          )}
           <button
             type="submit"
             className="mt-2 text-white bg-gradient-to-r from-blue-500 to-blue-700 hover:bg-gradient-to-l hover:from-blue-700 hover:to-blue-500 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:focus:ring-blue-800 shadow-lg shadow-blue-500/50 border border-blue-700 transition-all duration-300 ease-in-out cursor-pointer"

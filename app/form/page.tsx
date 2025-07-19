@@ -8,7 +8,10 @@ export default function Form() {
   const [formFields, setFormFields] = useState<FormFields>({});
   const [showJsonRequest, setShowJsonRequest] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [showHelpText, setShowHelpText] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+  const [formError, setFormError] = useState<string | null>(null);
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   interface HandleChange {
@@ -45,33 +48,28 @@ export default function Form() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
-
-    const missingFields: string[] = [];
+    const missingRequired: string[] = [];
 
     formSpec.forEach((field) => {
       if (field.inputReq === 1 && !formFields[field.fieldName]) {
-        missingFields.push(field.title);
+        missingRequired.push(field.title);
       }
     });
 
-    if (missingFields.length > 0) {
-      setError(
-        `Please fill in the required field(s): ${missingFields.join(", ")}`
+    if (missingRequired.length > 0) {
+      setFormError(
+        `Please fill in the required field(s): ${missingRequired.join(", ")}`
       );
       setShowJsonRequest(false);
-      return;
+    } else {
+      setFormError(null);
+      console.log(formFields);
+      setShowJsonRequest(true);
     }
-
-    console.log(formFields);
-    setShowJsonRequest(true);
   };
 
   const groupedFields = formSpec.reduce(
-    (
-      acc: { [key: string]: typeof formSpec },
-      field: (typeof formSpec)[number]
-    ) => {
+    (acc: { [key: string]: typeof formSpec }, field) => {
       if (!acc[field.category]) acc[field.category] = [];
       acc[field.category].push(field);
       return acc;
@@ -109,18 +107,45 @@ export default function Form() {
             {fields
               .sort((a, b) => a.fieldOrder - b.fieldOrder)
               .map((field) => (
-                <div key={field.fieldid} className="mb-4">
-                  <label className="block font-large mb-1 text-white">
+                <div key={field.fieldid} className="mb-4 relative">
+                  <label className="block font-large mb-1 text-white flex items-center gap-1">
                     {field.title}
                     {field.inputReq === 1 && (
-                      <span className="text-red-400 ml-1">*</span>
+                      <span className="text-red-500">*</span>
+                    )}
+                    {field.helpText && (
+                      <span
+                        className="ml-2 relative"
+                        onClick={() =>
+                          setShowHelpText((prev) => ({
+                            ...prev,
+                            [field.fieldid]: !prev[field.fieldid],
+                          }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setShowHelpText((prev) => ({
+                              ...prev,
+                              [field.fieldid]: !prev[field.fieldid],
+                            }));
+                          }
+                        }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`Help for ${field.title}`}
+                      >
+                        <span className="inline-block w-4 h-4 rounded-full bg-white text-black text-xs font-bold flex items-center justify-center cursor-pointer border border-gray-400">
+                          ?
+                        </span>
+                        {showHelpText[field.fieldid] && (
+                          <div className="absolute left-6 top-0 z-10 w-64 p-2 bg-white text-black text-xs rounded shadow-lg border border-gray-300">
+                            {field.helpText}
+                          </div>
+                        )}
+                      </span>
                     )}
                   </label>
-                  {field.helpText && (
-                    <p className="text-xs text-gray-300 mb-1">
-                      {field.helpText}
-                    </p>
-                  )}
 
                   {field.fieldType === "text" && (
                     <input
@@ -182,7 +207,6 @@ export default function Form() {
                           />
                         </svg>
                       </button>
-
                       {openDropdown === field.fieldid && (
                         <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto animate-fade-in">
                           {Object.entries(
@@ -209,40 +233,21 @@ export default function Form() {
                   )}
 
                   {field.fieldType === "datetime" && (
-                    <div className="relative w-full">
-                      <DatePicker
-                        selected={
-                          formFields[field.fieldName]
-                            ? new Date(formFields[field.fieldName] as string)
-                            : null
-                        }
-                        onChange={(date: Date | null) =>
-                          handleChange(
-                            field.fieldName,
-                            date?.toISOString() || ""
-                          )
-                        }
-                        showTimeSelect
-                        dateFormat="yyyy-MM-dd HH:mm"
-                        placeholderText="Select date & time"
-                        wrapperClassName="w-full"
-                        className="w-full p-2 pr-10 rounded-lg bg-gradient-to-br from-white via-gray-50 to-gray-100 border border-gray-300 shadow-inner text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all"
-                      />
-                      <svg
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
+                    <DatePicker
+                      selected={
+                        formFields[field.fieldName]
+                          ? new Date(formFields[field.fieldName] as string)
+                          : null
+                      }
+                      onChange={(date: Date | null) =>
+                        handleChange(field.fieldName, date?.toISOString() || "")
+                      }
+                      showTimeSelect
+                      dateFormat="yyyy-MM-dd HH:mm"
+                      placeholderText="Select date & time"
+                      wrapperClassName="w-full"
+                      className="w-full p-2 pr-10 rounded-lg bg-gradient-to-br from-white via-gray-50 to-gray-100 border border-gray-300 shadow-inner text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all"
+                    />
                   )}
 
                   {field.fieldType === "photo" || field.requiresPhoto === 1 ? (
@@ -272,10 +277,10 @@ export default function Form() {
               ))}
           </div>
         ))}
-        <div className="flex flex-col items-center justify-center">
-          {error && (
-            <p className="text-red-500 text-sm text-center mb-2">{error}</p>
-          )}
+        {formError && (
+          <div className="text-red-500 text-sm text-center">{formError}</div>
+        )}
+        <div className="flex justify-center">
           <button
             type="submit"
             className="mt-2 text-white bg-gradient-to-r from-blue-500 to-blue-700 hover:bg-gradient-to-l hover:from-blue-700 hover:to-blue-500 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:focus:ring-blue-800 shadow-lg shadow-blue-500/50 border border-blue-700 transition-all duration-300 ease-in-out cursor-pointer"

@@ -263,15 +263,19 @@ export default function Form() {
                     />
                   ) : null}
 
-                  {field.commentField === 1 && (
-                    <textarea
-                      placeholder="Comment..."
-                      className="w-full mt-2 border p-2 rounded"
-                      onChange={(e) =>
-                        field.commentFieldName &&
-                        handleChange(field.commentFieldName, e.target.value)
-                      }
-                    />
+                  {field.commentField === 1 && field.commentFieldName && (
+                    <div className="mt-2">
+                      <label className="block text-white font-medium mb-1">
+                        Comment
+                      </label>
+                      <textarea
+                        placeholder="Comment..."
+                        className="w-full border p-2 rounded"
+                        onChange={(e) =>
+                          handleChange(field.commentFieldName!, e.target.value)
+                        }
+                      />
+                    </div>
                   )}
                 </div>
               ))}

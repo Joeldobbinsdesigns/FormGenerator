@@ -5,7 +5,25 @@ import "react-datepicker/dist/react-datepicker.css";
 import formSpec from "@/data/formSpec.json";
 
 export default function Form() {
-  const [formFields, setFormFields] = useState<FormFields>({});
+  const initialFormFields = formSpec.reduce((acc, field) => {
+    if (field.defautVal) {
+      acc[field.fieldName] =
+        field.fieldType === "numberInt"
+          ? parseInt(field.defautVal)
+          : field.fieldType === "datetime"
+          ? new Date(field.defautVal).toISOString()
+          : field.defautVal;
+    }
+
+    // Also set comment field default if applicable
+    if (field.commentField === 1 && field.commentFieldName && field.defautVal) {
+      acc[field.commentFieldName] = field.defautVal;
+    }
+
+    return acc;
+  }, {} as { [key: string]: string | number | Date });
+
+  const [formFields, setFormFields] = useState(initialFormFields);
   const [showJsonRequest, setShowJsonRequest] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [showHelpText, setShowHelpText] = useState<{ [key: string]: boolean }>(
@@ -14,36 +32,12 @@ export default function Form() {
   const [formError, setFormError] = useState<string | null>(null);
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  interface HandleChange {
-    (fieldName: string, value: string | number | Date): void;
-  }
-
-  const handleChange: HandleChange = (fieldName, value) => {
-    setFormFields((prev: FormFields) => ({ ...prev, [fieldName]: value }));
+  const handleChange = (fieldName: string, value: string | number | Date) => {
+    setFormFields((prev) => ({ ...prev, [fieldName]: value }));
   };
 
-  interface FormField {
-    fieldid: string;
-    fieldName: string;
-    title: string;
-    helpText?: string;
-    fieldType: "text" | "numberInt" | "select" | "datetime" | "photo";
-    defautVal?: string;
-    dropVals?: string;
-    category: string;
-    fieldOrder: number;
-    requiresPhoto?: number;
-    commentField?: number;
-    commentFieldName?: string;
-    inputReq?: number;
-  }
-
-  interface FormFields {
-    [key: string]: string | number | File | Date | undefined;
-  }
-
   const changePhoto = (fieldName: string, file: File) => {
-    setFormFields((prev: FormFields) => ({ ...prev, [fieldName]: file.name }));
+    setFormFields((prev) => ({ ...prev, [fieldName]: file.name }));
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -68,14 +62,11 @@ export default function Form() {
     }
   };
 
-  const groupedFields = formSpec.reduce(
-    (acc: { [key: string]: typeof formSpec }, field) => {
-      if (!acc[field.category]) acc[field.category] = [];
-      acc[field.category].push(field);
-      return acc;
-    },
-    {} as { [key: string]: typeof formSpec }
-  );
+  const groupedFields = formSpec.reduce((acc: any, field) => {
+    if (!acc[field.category]) acc[field.category] = [];
+    acc[field.category].push(field);
+    return acc;
+  }, {});
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -151,6 +142,7 @@ export default function Form() {
                     <input
                       type="text"
                       className="w-full border p-2 rounded"
+                      value={formFields[field.fieldName] ?? ""}
                       onChange={(e) =>
                         handleChange(field.fieldName, e.target.value)
                       }
@@ -161,6 +153,7 @@ export default function Form() {
                     <input
                       type="number"
                       className="w-full border p-2 rounded"
+                      value={formFields[field.fieldName] ?? ""}
                       onChange={(e) =>
                         handleChange(field.fieldName, parseInt(e.target.value))
                       }
@@ -271,6 +264,7 @@ export default function Form() {
                       <textarea
                         placeholder="Comment..."
                         className="w-full border p-2 rounded"
+                        value={formFields[field.commentFieldName] ?? ""}
                         onChange={(e) =>
                           handleChange(field.commentFieldName!, e.target.value)
                         }
